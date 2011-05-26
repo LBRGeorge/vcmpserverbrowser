@@ -1,0 +1,226 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United Kingdom) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU1 MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Import Settings...",         ID_FILE_IMPORTFAVOURITES, INACTIVE
+        MENUITEM "&Export Settings...",         ID_FILE_EXPORTFAVOURITES, INACTIVE
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_FILE_EXIT
+    END
+    POPUP "&Server"
+    BEGIN
+        MENUITEM "&Add Server",                 ID_SERVER_ADDSERVER
+        MENUITEM "&Delete Server",              ID_SERVER_REMOVESERVER, INACTIVE
+        MENUITEM "&Refresh Server",             ID_SERVER_REFRESHSERVER, INACTIVE
+        MENUITEM SEPARATOR
+        MENUITEM "Refresh &Master List",        ID_SERVER_REFRESHMASTERLIST, INACTIVE
+    END
+    POPUP "&Tools"
+    BEGIN
+        MENUITEM "&Settings",                   ID_TOOLS_SETTINGS
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "Help && &Support",            ID_HELP_HELPSUPPORT
+        MENUITEM "&About",                      ID_HELP_ABOUT
+    END
+END
+
+IDR_RCLICKMENU MENU
+BEGIN
+    POPUP "FavsMenu"
+    BEGIN
+        MENUITEM "Connect",                     ID_MENU_CONNECT
+        MENUITEM "Delete",                      ID_SERVER_REMOVESERVER
+        MENUITEM SEPARATOR
+        MENUITEM "Copy Server IP",              ID_MENU_COPYSERVERIP
+    END
+    POPUP "NormalMenu"
+    BEGIN
+        MENUITEM "Connect",                     ID_MENU_CONNECT
+        MENUITEM "Add To Favourites",           ID_MENU_ADDTOFAVS
+        MENUITEM SEPARATOR
+        MENUITEM "Copy Server IP",              ID_MENU_COPYSERVERIP
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "app.ico"
+IDI_LOCKED              ICON                    "Images\\Locked.ico"
+IDI_UNLOCKED            ICON                    "Images\\Unlocked.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_DLG_SETTINGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 231
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 118
+    END
+
+    IDD_DLG_ADDSERVER, DIALOG
+    BEGIN
+        LEFTMARGIN, 6
+        RIGHTMARGIN, 150
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 50
+    END
+
+    IDD_DLG_PASS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 77
+    END
+
+    IDD_DLG_ABOUT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 213
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 92
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_DLG_SETTINGS DIALOGEX 0, 0, 238, 125
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Settings"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,120,104,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,180,104,50,14
+    GROUPBOX        "Settings",IDC_STATIC,7,7,224,95
+    EDITTEXT        IDC_EDIT_NAME,24,30,193,14,ES_AUTOHSCROLL
+    GROUPBOX        "GTA:VC Directory",IDC_STATIC,18,58,204,36
+    EDITTEXT        IDC_EDIT_GTAVC,24,70,138,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_BTN_GTAVC_BROWSE,168,70,50,14
+    GROUPBOX        "Username",IDC_STATIC,18,18,204,36
+END
+
+IDD_DLG_ADDSERVER DIALOGEX 0, 0, 157, 57
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Add Server"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,18,36,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,90,36,50,14
+    LTEXT           "Enter new server HOST:PORT...",IDC_STATIC,12,6,132,8
+    EDITTEXT        IDC_EDIT_SERV,12,18,132,14,ES_AUTOHSCROLL
+END
+
+IDD_DLG_PASS DIALOGEX 0, 0, 182, 84
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Server Password..."
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Connect",IDOK,20,65,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,110,65,50,14
+    GROUPBOX        "Password",IDC_STATIC,5,5,170,55
+    EDITTEXT        IDC_EDIT_PASS,10,20,160,14,ES_PASSWORD | ES_AUTOHSCROLL
+    CONTROL         "Rememeber Password",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,80,40,87,10
+END
+
+IDD_DLG_ABOUT DIALOGEX 0, 0, 220, 99
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Close",IDOK,162,78,50,14
+    LTEXT           "VC:MP 0.3z R2 Server Browser.",IDC_STATIC,42,12,102,8
+    ICON            IDI_ICON1,IDC_STATIC,12,12,20,20
+    LTEXT           "0.1.0.1",IDC_LBL_VER,72,24,61,8
+    LTEXT           "Version",IDC_STATIC,42,24,24,8
+    LTEXT           "Copyright © 2011 VRocker",IDC_STATIC,42,36,87,8
+    LTEXT           "Developed by: VRocker ",IDC_STATIC,42,54,78,8
+    LTEXT           "Website: http://vcmp.liberty-unleashed.co.uk",IDC_STATIC,42,66,148,8
+END
+
+#endif    // English (United Kingdom) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
