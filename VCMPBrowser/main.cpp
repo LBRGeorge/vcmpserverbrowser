@@ -200,7 +200,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	TCHAR szFile[ 384 ] = { NULL };
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/Unleashed Games" ) );
+	_tcscat( szFile, _TEXT( "/VCMP" ) );
 	_tmkdir( szFile );
 
 
@@ -209,8 +209,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	CServerQuery::Init();
 
 	CFavourites::Load();
-
-	bool bNoUpdateCheck = false;
 
 	if ( *lpCmdLine )
 	{
@@ -222,7 +220,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		unsigned short usPort = 0;
 		char szPass[ 128 ] = { 0 };
 
-		if ( str_prefix( szCmds, "lu://", 5 ) )
+		if ( str_prefix( szCmds, "vcmp://", 5 ) )
 		{
 			char* opt = strtok( szCmds+5, "/" );	// Get a space delimited token.
 			while ( opt )
@@ -328,23 +326,19 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			char* opt = strtok( szCmds, " " );	// Get a space delimited token.
 			while ( opt )
 			{
-				if ( str_equal(opt, "-hook") )	// If current token is "-hook"...
+				if ( str_equal(opt, "-c") )	// If current token is "-hook"...
 				{
 					bStartFromCmd = true;			// Set the hook to be enabled
 				}
-				else if ( str_equal(opt, "-ip") )	// If current token is "-ip"...
+				else if ( str_equal(opt, "-h") )	// If current token is "-ip"...
 				{
 					opt = strtok(NULL, " ");
 					str_cpyA( szIP, opt, sizeof( szIP ) );			// Set the server IP
 				}
-				else if ( str_equal(opt, "-port") )	// If current token is "-port"...
+				else if ( str_equal(opt, "-p") )	// If current token is "-port"...
 				{
 					opt = strtok(NULL, " ");
 					usPort = static_cast< unsigned short >( atoi( opt ) );			// Set the server port
-				}
-				else if ( str_equal( opt, "-noupdate" ) )
-				{
-					bNoUpdateCheck = true;
 				}
 				opt = strtok(NULL, " ");			// Get next token.			
 			}
