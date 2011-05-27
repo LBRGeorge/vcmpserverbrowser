@@ -113,7 +113,7 @@ public:
 		if ( m_szServerMap )
 			return m_szServerMap; 
 		else
-			return m_szServerMap;
+			return "";
 	}
 	void							SetServerMap			( const char* sz );
 

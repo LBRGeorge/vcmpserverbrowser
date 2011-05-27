@@ -1113,20 +1113,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							break;
 						case 4:
 							{
-								switch ( CMainWindow::m_lFavServers[ lvd->item.iItem ]->GetGameID() )
-								{
-								case 1:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
-									break;
-
-								case 2:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
-									break;
-
-								case 3:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
-									break;
-								}
+								_tcscpy( lvd->item.pszText, CMainWindow::m_lFavServers[ lvd->item.iItem ]->GetServerMap());
 							}
 							break;
 
@@ -1173,20 +1160,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							break;
 						case 4:
 							{
-								switch ( CMainWindow::m_lInternetServers[ lvd->item.iItem ]->GetGameID() )
-								{
-								case 1:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
-									break;
-
-								case 2:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
-									break;
-
-								case 3:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
-									break;
-								}
+								_tcscpy( lvd->item.pszText, CMainWindow::m_lInternetServers[ lvd->item.iItem ]->GetServerMap());
 							}
 							break;
 
@@ -1231,20 +1205,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							break;
 						case 4:
 							{
-								switch ( CMainWindow::m_lOfficialServers[ lvd->item.iItem ]->GetGameID() )
-								{
-								case 1:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
-									break;
-
-								case 2:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
-									break;
-
-								case 3:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
-									break;
-								}
+								_tcscpy( lvd->item.pszText, CMainWindow::m_lOfficialServers[ lvd->item.iItem ]->GetServerMap());
 							}
 							break;
 
@@ -1289,20 +1250,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							break;
 						case 4:
 							{
-								switch ( CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetGameID() )
-								{
-								case 1:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
-									break;
-
-								case 2:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
-									break;
-
-								case 3:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
-									break;
-								}
+								_tcscpy( lvd->item.pszText, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMap());
 							}
 							break;
 
@@ -1349,20 +1297,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							break;
 						case 4:
 							{
-								switch ( CMainWindow::m_lLANServers[ lvd->item.iItem ]->GetGameID() )
-								{
-								case 1:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
-									break;
-
-								case 2:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
-									break;
-
-								case 3:
-									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
-									break;
-								}
+								_tcscpy( lvd->item.pszText, CMainWindow::m_lLANServers[ lvd->item.iItem ]->GetServerMap());
 							}
 							break;
 
@@ -1642,7 +1577,7 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Game");
+		lvC.pszText = _TEXT("Map");
 		ListView_InsertColumn( m_hFavsList, 4, &lvC);
 
 		lvC.iSubItem = 5;
@@ -1691,7 +1626,7 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Game");
+		lvC.pszText = _TEXT("Map");
 		ListView_InsertColumn( m_hInternetList, 4, &lvC);
 
 		lvC.iSubItem = 5;
@@ -1738,7 +1673,7 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Game");
+		lvC.pszText = _TEXT("Map");
 		ListView_InsertColumn( m_hOfficialList, 4, &lvC);
 
 		lvC.iSubItem = 5;
@@ -1786,7 +1721,7 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Game");
+		lvC.pszText = _TEXT("Map");
 		ListView_InsertColumn( m_hHistoryList, 4, &lvC);
 
 		lvC.iSubItem = 5;
@@ -1835,7 +1770,7 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Game");
+		lvC.pszText = _TEXT("Map");
 		ListView_InsertColumn( m_hLANList, 4, &lvC);
 
 		lvC.iSubItem = 5;
