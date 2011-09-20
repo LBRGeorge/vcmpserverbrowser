@@ -2,10 +2,11 @@
 #include "ServerQuery.h"
 #include "SettingsDlg.h"
 #include "Favourites.h"
+#include "History.h"
 #include "PasswordDlg.h"
 #include <shlobj.h>
 #include <Windowsx.h>
-
+#include "Win7.h"
 
 // Enables styles on stuff
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -14,12 +15,13 @@
 
 extern void SplitIPAndPort( const char* sz, char szIP[], unsigned short& usPort, size_t uiIPBufSize );
 
+extern bool ProcessCommandLine( LPSTR lpCmdLine );
+
 HWND CMainWindow::m_hWnd = 0;
 HWND CMainWindow::m_hStatusBar = 0;
 HWND CMainWindow::m_hTabControl = 0;
 HWND CMainWindow::m_hSideGroupBox = 0;
 HWND CMainWindow::m_hFiltersGroupBox = 0;
-HWND CMainWindow::m_hInfoGroupBox = 0;
 HWND CMainWindow::m_hPlayerList = 0;
 // List Views
 HWND CMainWindow::m_hFavsList = 0;
@@ -58,6 +60,117 @@ size_t CMainWindow::m_uiLANServers = 0;
 
 CPlayers* CMainWindow::m_lPlayers[ MAX_PLAYERS ] = { 0 };
 size_t CMainWindow::m_uiPlayers = 0;
+
+sColumnSorting g_sColumnSorting[ E_LT_COUNT ];
+E_LISTTYPE g_currentSortList = E_LT_COUNT;
+
+int CompareHostname( const void* p1, const void* p2 )
+{
+	CServers** pServ1 = (CServers**)p1;
+	CServers** pServ2 = (CServers**)p2;
+
+	
+	if ( g_sColumnSorting[ g_currentSortList ].eSorting == E_LS_DESCENDING )
+	{
+		return strcmp( (*pServ1)->GetServerName(), (*pServ2)->GetServerName() );
+	}
+	else
+	{
+		return -strcmp( (*pServ1)->GetServerName(), (*pServ2)->GetServerName() );
+	}
+
+	return 1;
+}
+
+int ComparePing( const void* p1, const void* p2 )
+{
+	CServers** pServ1 = (CServers**)p1;
+	CServers** pServ2 = (CServers**)p2;
+
+	if ( g_sColumnSorting[ g_currentSortList ].eSorting == E_LS_DESCENDING )
+	{
+		if ( (*pServ1)->GetServerPing() < (*pServ2)->GetServerPing() ) return -1;
+		if ( (*pServ1)->GetServerPing() > (*pServ2)->GetServerPing() ) return 1;
+	}
+	else
+	{
+		if ( (*pServ1)->GetServerPing() < (*pServ2)->GetServerPing() ) return 1;
+		if ( (*pServ1)->GetServerPing() > (*pServ2)->GetServerPing() ) return -1;
+	}
+
+	return 1;
+}
+
+int ComparePlayers( const void* p1, const void* p2 )
+{
+	CServers** pServ1 = (CServers**)p1;
+	CServers** pServ2 = (CServers**)p2;
+
+	if ( g_sColumnSorting[ g_currentSortList ].eSorting == E_LS_DESCENDING )
+	{
+		if ( (*pServ1)->GetServerPlayers() < (*pServ2)->GetServerPlayers() ) return 1;
+		if ( (*pServ1)->GetServerPlayers() > (*pServ2)->GetServerPlayers() ) return -1;
+	}
+	else
+	{
+		if ( (*pServ1)->GetServerPlayers() < (*pServ2)->GetServerPlayers() ) return -1;
+		if ( (*pServ1)->GetServerPlayers() > (*pServ2)->GetServerPlayers() ) return 1;
+	}
+
+	return 1;
+}
+
+int CompareGameName( const void* p1, const void* p2 )
+{
+	CServers** pServ1 = (CServers**)p1;
+	CServers** pServ2 = (CServers**)p2;
+
+	
+	if ( g_sColumnSorting[ g_currentSortList ].eSorting == E_LS_DESCENDING )
+	{
+		if ( (*pServ1)->GetGameID() < (*pServ2)->GetGameID() ) return 1;
+		if ( (*pServ1)->GetGameID() > (*pServ2)->GetGameID() ) return -1;
+	}
+	else
+	{
+		if ( (*pServ1)->GetGameID() < (*pServ2)->GetGameID() ) return -1;
+		if ( (*pServ1)->GetGameID() > (*pServ2)->GetGameID() ) return 1;
+	}
+
+	return 1;
+}
+
+int CompareGameMode( const void* p1, const void* p2 )
+{
+	CServers** pServ1 = (CServers**)p1;
+	CServers** pServ2 = (CServers**)p2;
+
+	
+	if ( g_sColumnSorting[ g_currentSortList ].eSorting == E_LS_DESCENDING )
+	{
+		return strcmp( (*pServ1)->GetServerMode(), (*pServ2)->GetServerMode() );
+	}
+	else
+	{
+		return -strcmp( (*pServ1)->GetServerMode(), (*pServ2)->GetServerMode() );
+	}
+
+	return 1;
+}
+
+
+#ifndef _NO_HISTORY
+int CompareTime( const void* p1, const void* p2 )
+{
+	CHistoryServer** pHist1 = (CHistoryServer**)p1;
+	CHistoryServer** pHist2 = (CHistoryServer**)p2;
+
+	if ( (*pHist1)->GetLastPlayed() < (*pHist2)->GetLastPlayed() ) return 1;
+	if ( (*pHist1)->GetLastPlayed() > (*pHist2)->GetLastPlayed() ) return -1;
+
+	return 1;
+}
+#endif
 
 BOOL SetClipboardText(LPCTSTR pszText)
 {
@@ -163,16 +276,27 @@ void StartGame( const char* szIP, unsigned short usPort, unsigned char ucGame, c
 #ifndef _NO_HISTORY
 		else
 		{
-			CServers* pServer = CServerManager::Find( szIP, usPort );
-			if ( pServer )
+			CHistoryServer* pHist = CHistoryServerManager::Find( szIP, usPort );
+			if ( pHist )
 			{
-				CHistoryServer* pHist = CHistoryServerManager::New( *pServer );
-				if ( pHist )
-				{
-					pHist->SetLastPlayed( clock() );
-					pHist->SetType( E_ST_HISTORY );
+				pHist->SetLastPlayed( time(0) );
+				pHist->UpdateList();
 
-					pHist->UpdateList();
+				CMainWindow::ReorderHistoryList();
+			}
+			else
+			{
+				CServers* pServer = CServerManager::Find( szIP, usPort );
+				if ( pServer )
+				{
+					pHist =	CHistoryServerManager::New( pServer );
+					if ( pHist )
+					{
+						pHist->SetLastPlayed( time(0) );
+						pServer->SetType( (E_SERVER_TYPE)(pServer->GetType() | E_ST_HISTORY) );
+
+						pHist->UpdateList();
+					}
 				}
 			}
 		}
@@ -463,10 +587,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
 							if(index != -1)
 							{
-								CServers* pServer = CMainWindow::m_lHistoryServers[ index ];
-								if ( pServer )
+								CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ index ];
+								if ( pHistServer )
 								{
-									ConnectToServer( hwnd, pServer );
+									CServers* pServer = pHistServer->GetServer();
+									if ( pServer )
+										ConnectToServer( hwnd, pServer );
 								}
 							}
 						}
@@ -552,12 +678,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
 							if(index != -1)
 							{
-								CServers* pServer = CMainWindow::m_lHistoryServers[ index ];
-								if ( pServer )
+								CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ index ];
+								if ( pHistServer )
 								{
-									TCHAR szOut[ 64 ] = { 0 };
-									_stprintf( szOut, "%s:%u",  pServer->GetServerIP(), pServer->GetServerPort() );
-									SetClipboardText( szOut );
+									CServers* pServer = pHistServer->GetServer();
+									if ( pServer )
+									{
+										TCHAR szOut[ 64 ] = { 0 };
+										_stprintf( szOut, "%s:%u",  pServer->GetServerIP(), pServer->GetServerPort() );
+										SetClipboardText( szOut );
+									}
 								}
 							}
 						}
@@ -645,20 +775,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
 							if(index != -1)
 							{
-								CServers* pServer = CMainWindow::m_lHistoryServers[ index ];
-								if ( pServer )
+								CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ index ];
+								if ( pHistServer )
 								{
-									if ( !(pServer->GetType() & E_ST_FAV) )
+									CServers* pServer = pHistServer->GetServer();
+									if ( pServer )
 									{
-										pServer->SetType( (E_SERVER_TYPE)(pServer->GetType() | E_ST_FAV) );
+										if ( !(pServer->GetType() & E_ST_FAV) )
+										{
+											pServer->SetType( (E_SERVER_TYPE)(pServer->GetType() | E_ST_FAV) );
 
-										pServer->Query();
+											pServer->Query();
 
-										pServer->UpdateList();
+											pServer->UpdateList();
 
-										MessageBox( 0, _TEXT( "Added to favourites." ), _TEXT( "Add To Favourites" ), MB_OK );
+											MessageBox( 0, _TEXT( "Added to favourites." ), _TEXT( "Add To Favourites" ), MB_OK );
+										}
+										else MessageBox( 0, _TEXT( "This server is already in your favourites." ), _TEXT( "Add To Favourites" ), MB_OK );
 									}
-									else MessageBox( 0, _TEXT( "This server is already in your favourites." ), _TEXT( "Add To Favourites" ), MB_OK );
 								}
 							}
 						}
@@ -703,6 +837,157 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 			switch( ((LPNMHDR)lParam)->code )
 			{
+				case LVN_COLUMNCLICK:
+				{
+					NMLISTVIEW*    pListView   = (NMLISTVIEW*)lParam;
+					NMHDR* hdr = &pListView->hdr;
+
+					CMainWindow::ClearPlayerList();
+					CMainWindow::ClearServerInfo();		
+
+					if ( hdr->hwndFrom == CMainWindow::GetFavsList() )
+						CMainWindow::ReorderFavsList( pListView->iSubItem );
+					else if ( hdr->hwndFrom == CMainWindow::GetInternetList() )
+						CMainWindow::ReorderInternetList( pListView->iSubItem );
+					else if ( hdr->hwndFrom == CMainWindow::GetOfficialList() )
+						CMainWindow::ReorderOfficialList( pListView->iSubItem );
+				}
+				break;
+
+			case LVN_ITEMCHANGED:
+				{
+					LPNMLISTVIEW pnkd = (LPNMLISTVIEW) lParam;
+					if ( pnkd->uNewState & LVIS_SELECTED )
+					{
+						//MessageBox( 0, "Blah", "a", MB_OK );
+						NMHDR* hdr = &pnkd->hdr;
+						CMainWindow::ClearPlayerList();
+
+						if ( hdr->hwndFrom == CMainWindow::GetFavsList() )
+						{
+							int index = ListView_GetNextItem(CMainWindow::GetFavsList(),-1,LVNI_SELECTED);
+							HMENU hMenu = GetMenu( CMainWindow::GetMain() );
+
+							if(index != -1)
+							{
+								if ( CMainWindow::m_lFavServers[ index ] )
+								{
+									EnableMenuItem( hMenu, ID_SERVER_REMOVESERVER, MF_ENABLED );
+									CMainWindow::m_lFavServers[ index ]->QueryWithPlayers();
+
+									CMainWindow::UpdateServerInfo( index, CMainWindow::m_lFavServers[ index ] );
+								}
+							}
+							else 
+							{
+								EnableMenuItem( hMenu, ID_SERVER_REMOVESERVER, MF_DISABLED );
+
+								CMainWindow::ClearServerInfo();
+							}
+						}
+
+						else if ( hdr->hwndFrom == CMainWindow::GetInternetList() )
+						{
+							int index = ListView_GetNextItem(CMainWindow::GetInternetList(),-1,LVNI_SELECTED);
+							if(index != -1)
+							{
+								if ( CMainWindow::m_lInternetServers[ index ] )
+								{
+									CMainWindow::m_lInternetServers[ index ]->QueryWithPlayers();
+									CMainWindow::UpdateServerInfo( index, CMainWindow::m_lInternetServers[ index ] );
+								}
+							}
+							else
+							{
+								CMainWindow::ClearServerInfo();
+							}
+						}
+
+						else if ( hdr->hwndFrom == CMainWindow::GetOfficialList() )
+						{
+							int index = ListView_GetNextItem(CMainWindow::GetOfficialList(),-1,LVNI_SELECTED);
+							if(index != -1)
+							{
+								if ( CMainWindow::m_lOfficialServers[ index ] )
+								{
+									CMainWindow::m_lOfficialServers[ index ]->QueryWithPlayers();
+									CMainWindow::UpdateServerInfo( index, CMainWindow::m_lOfficialServers[ index ] );
+								}
+							}
+							else
+							{
+								CMainWindow::ClearServerInfo();
+							}
+						}
+
+#ifndef _NO_HISTORY
+						else if ( hdr->hwndFrom == CMainWindow::GetHistoryList() )
+						{
+							int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
+							if(index != -1)
+							{
+								CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ index ];
+								if ( pHistServer )
+								{
+									CServers* pServer = pHistServer->GetServer();
+									if ( pServer )
+									{
+										pServer->QueryWithPlayers();
+										CMainWindow::UpdateServerInfo( index, pServer );
+									}
+								}
+							}
+							else
+							{
+								CMainWindow::ClearServerInfo();
+							}
+						}
+#endif
+
+#ifndef _NO_LAN_MODE
+						else if ( hdr->hwndFrom == CMainWindow::GetLANList() )
+						{
+							int index = ListView_GetNextItem(CMainWindow::GetLANList(),-1,LVNI_SELECTED);
+							if(index != -1)
+							{
+								if ( CMainWindow::m_lLANServers[ index ] )
+								{
+									CMainWindow::m_lLANServers[ index ]->QueryWithPlayers();
+									CMainWindow::UpdateServerInfo( index, CMainWindow::m_lLANServers[ index ] );
+
+									CMainWindow::UpdateRuleList( index, CMainWindow::m_lLANServers[ index ] );
+								}
+							}
+							else
+							{
+								CMainWindow::ClearServerInfo();
+							}
+						}
+#endif
+					}
+				}
+				break;
+			case LVN_KEYDOWN:
+				{
+					//TCN_SELCHANGE
+					LPNMLVKEYDOWN pnkd = (LPNMLVKEYDOWN) lParam;
+					switch ( pnkd->wVKey )
+					{
+					case VK_RETURN:
+						{
+							NMHDR nmh;
+							nmh.code = NM_DBLCLK;
+							nmh.idFrom = pnkd->hdr.idFrom;
+							nmh.hwndFrom = pnkd->hdr.hwndFrom;
+
+							SendMessage( CMainWindow::GetMain(), WM_NOTIFY, 0, (LPARAM)&nmh );
+						}
+						break;
+					}
+					//MessageBox( 0, "Key changed", "Blah", MB_OK );
+				}
+				break;
+
 			case TCN_SELCHANGE:
 				{
 					// get the currently selected tab item
@@ -845,22 +1130,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case NM_CLICK:
 				{
 					NMHDR* hdr = (NMHDR FAR*)lParam;
+					int iIndex = -1;
 					if ( hdr->hwndFrom == CMainWindow::GetFavsList() )
 					{
 						int index = ListView_GetNextItem(CMainWindow::GetFavsList(),-1,LVNI_SELECTED);
 						HMENU hMenu = GetMenu( CMainWindow::GetMain() );
 
-						if(index != -1)
-						{
-							if ( CMainWindow::m_lFavServers[ index ] )
-							{
-								EnableMenuItem( hMenu, ID_SERVER_REMOVESERVER, MF_ENABLED );
-								CMainWindow::m_lFavServers[ index ]->QueryWithPlayers();
-
-								CMainWindow::UpdateServerInfo( index, CMainWindow::m_lFavServers[ index ] );
-							}
-						}
-						else 
+						if(index == -1)
 						{
 							EnableMenuItem( hMenu, ID_SERVER_REMOVESERVER, MF_DISABLED );
 							CMainWindow::ClearPlayerList();
@@ -869,85 +1145,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						}
 					}
 
-					else if ( hdr->hwndFrom == CMainWindow::GetInternetList() )
+					else 
 					{
-						int index = ListView_GetNextItem(CMainWindow::GetInternetList(),-1,LVNI_SELECTED);
-						if(index != -1)
-						{
-							if ( CMainWindow::m_lInternetServers[ index ] )
-							{
-								CMainWindow::m_lInternetServers[ index ]->QueryWithPlayers();
-								CMainWindow::UpdateServerInfo( index, CMainWindow::m_lInternetServers[ index ] );
-							}
-						}
-						else
-						{
-							CMainWindow::ClearPlayerList();
-
-							CMainWindow::ClearServerInfo();
-						}
-					}
-
-					else if ( hdr->hwndFrom == CMainWindow::GetOfficialList() )
-					{
-						int index = ListView_GetNextItem(CMainWindow::GetOfficialList(),-1,LVNI_SELECTED);
-						if(index != -1)
-						{
-							if ( CMainWindow::m_lOfficialServers[ index ] )
-							{
-								CMainWindow::m_lOfficialServers[ index ]->QueryWithPlayers();
-								CMainWindow::UpdateServerInfo( index, CMainWindow::m_lOfficialServers[ index ] );
-							}
-						}
-						else
-						{
-							CMainWindow::ClearPlayerList();
-
-							CMainWindow::ClearServerInfo();
-						}
-					}
-
+						if ( hdr->hwndFrom == CMainWindow::GetInternetList() )
+							iIndex = ListView_GetNextItem(CMainWindow::GetInternetList(),-1,LVNI_SELECTED);
+						else if ( hdr->hwndFrom == CMainWindow::GetOfficialList() )
+							iIndex = ListView_GetNextItem(CMainWindow::GetOfficialList(),-1,LVNI_SELECTED);
 #ifndef _NO_HISTORY
-					else if ( hdr->hwndFrom == CMainWindow::GetHistoryList() )
-					{
-						int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
-						if(index != -1)
-						{
-							if ( CMainWindow::m_lHistoryServers[ index ] )
-							{
-								CMainWindow::m_lHistoryServers[ index ]->QueryWithPlayers();
-								CMainWindow::UpdateServerInfo( index, CMainWindow::m_lHistoryServers[ index ] );
-							}
-						}
-						else
-						{
-							CMainWindow::ClearPlayerList();
-
-							CMainWindow::ClearServerInfo();
-						}
-					}
+						else if ( hdr->hwndFrom == CMainWindow::GetHistoryList() )
+							iIndex = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
 #endif
-
 #ifndef _NO_LAN_MODE
-					else if ( hdr->hwndFrom == CMainWindow::GetLANList() )
-					{
-						int index = ListView_GetNextItem(CMainWindow::GetLANList(),-1,LVNI_SELECTED);
-						if(index != -1)
-						{
-							if ( CMainWindow::m_lLANServers[ index ] )
-							{
-								CMainWindow::m_lLANServers[ index ]->QueryWithPlayers();
-								CMainWindow::UpdateServerInfo( index, CMainWindow::m_lLANServers[ index ] );
-							}
-						}
-						else
+						else if ( hdr->hwndFrom == CMainWindow::GetLANList() )
+							iIndex = ListView_GetNextItem(CMainWindow::GetLANList(),-1,LVNI_SELECTED);
+#endif
+
+						if(iIndex == -1)
 						{
 							CMainWindow::ClearPlayerList();
 
 							CMainWindow::ClearServerInfo();
 						}
 					}
-#endif
+
 					return TRUE;
 				}
 				break;
@@ -1000,10 +1220,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						int index = ListView_GetNextItem(CMainWindow::GetHistoryList(),-1,LVNI_SELECTED);
 						if(index != -1)
 						{
-							CServers* pServer = CMainWindow::m_lHistoryServers[ index ];
-							if ( pServer )
+							CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ index ];
+							if ( pHistServer )
 							{
-								ConnectToServer( hwnd, pServer );
+								CServers* pServer = pHistServer->GetServer();
+								if ( pServer )
+								{
+									ConnectToServer( hwnd, pServer );
+								}
 							}
 						}
 					}
@@ -1222,7 +1446,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #ifndef _NO_HISTORY
 					else if((((LPNMHDR)lParam)->hwndFrom == CMainWindow::GetHistoryList()))
 					{
-						if ( !CMainWindow::m_lHistoryServers[ lvd->item.iItem ] ) 
+						CHistoryServer* pHistServer = CMainWindow::m_lHistoryServers[ lvd->item.iItem ];						
+						if ( !pHistServer ) 
+						{
+							lvd->item.pszText = _TEXT("");
+							break;
+						}
+						CServers* pServer = pHistServer->GetServer();
+						if ( !pServer ) 
 						{
 							lvd->item.pszText = _TEXT("");
 							break;
@@ -1231,34 +1462,48 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						{
 						case 0:
 							{
-								if ( CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetLocked() ) lvd->item.iImage = 1;
+								if ( pServer->GetLocked() ) lvd->item.iImage = 1;
 								else lvd->item.iImage = 0;
 							}
 							break;
 						case 1:
 #ifdef _UNICODE
-							MultiByteToWideChar( CP_ACP, 0, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerName(), -1, lvd->item.pszText, strlen( CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerName() )+1 );
+							MultiByteToWideChar( CP_ACP, 0, pServer->GetServerName(), -1, lvd->item.pszText, strlen( pServer->GetServerName() )+1 );
 #else
-							strcpy( lvd->item.pszText, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerName() );
+							strcpy( lvd->item.pszText, pServer->GetServerName() );
 #endif
 							break;
 						case 2:
-							_stprintf( lvd->item.pszText, _TEXT("%u"), CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerPing() );
+							_stprintf( lvd->item.pszText, _TEXT("%u"), pServer->GetServerPing() );
 							break;
 						case 3:
-							_stprintf( lvd->item.pszText, _TEXT("%u/%u"), CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerPlayers(), CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMaxPlayers() );
+							_stprintf( lvd->item.pszText, _TEXT("%u/%u"), pServer->GetServerPlayers(), pServer->GetServerMaxPlayers() );
 							break;
 						case 4:
 							{
-								_tcscpy( lvd->item.pszText, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMap());
+								switch ( pServer->GetGameID() )
+								{
+								case 1:
+									_tcscpy( lvd->item.pszText, _TEXT( "GTA3" ) );
+									break;
+
+								case 2:
+									_tcscpy( lvd->item.pszText, _TEXT( "GTA:VC" ) );
+									break;
+
+								case 3:
+									_tcscpy( lvd->item.pszText, _TEXT( "GTA:SA" ) );
+									break;
+								}
 							}
 							break;
 
 						case 5:
 #ifdef _UNICODE
-							MultiByteToWideChar( CP_ACP, 0, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMode(), -1, lvd->item.pszText, strlen( CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMode() )+1 );
+							MultiByteToWideChar( CP_ACP, 0, pServer->GetServerMode(), -1, lvd->item.pszText, strlen( pServer->GetServerMode() )+1 );
 #else
-							strcpy( lvd->item.pszText, CMainWindow::m_lHistoryServers[ lvd->item.iItem ]->GetServerMode() );
+							time_t lastPlayed = pHistServer->GetLastPlayed();
+							strcpy( lvd->item.pszText, asctime( localtime( &lastPlayed ) ) );
 #endif
 							break;
 						}
@@ -1334,10 +1579,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 
+#ifndef _NO_HISTORY
+	case WM_UPDATEHISTORYSERVERLIST:
+		{
+			CHistoryServer* pServer = (CHistoryServer*)lParam;
+			if ( pServer )
+				pServer->UpdateList();
+		}
+		break;
+#endif
+
+	case WM_COPYDATA:
+		{
+			PCOPYDATASTRUCT myData = (PCOPYDATASTRUCT)lParam;
+			//MessageBox( 0, (LPSTR)myData->lpData, "Test", MB_OK );
+			ProcessCommandLine( (LPSTR)myData->lpData );
+		}
+		break;
+
 	case WM_CLOSE:
 		{
 			// Save the favs list
 			CFavourites::Write();
+#ifndef _NO_HISTORY
+			CHistory::Write();
+#endif
 			
 			DestroyWindow(hwnd);
 		}
@@ -1454,7 +1720,7 @@ bool CMainWindow::CreateTabControl( void )
 #ifndef _NO_LAN_MODE
 	tie.mask = TCIF_TEXT; 
 	tie.pszText = _TEXT("LAN"); 
-	TabCtrl_InsertItem(m_hTabControl, 4, &tie);
+	TabCtrl_InsertItem(m_hTabControl, LAN_MODE_TAB_ID, &tie);
 #endif
 
 	TabCtrl_SetCurSel(m_hTabControl, 0);
@@ -1471,21 +1737,18 @@ bool CMainWindow::CreateGroupBox( void )
 	m_hSideGroupBox = CreateWindowEx( 0, WC_BUTTON, _TEXT(""), WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | BS_GROUPBOX, 600, 0, 200, 500, m_hWnd, NULL, GetModuleHandle(NULL), NULL );
 	SetWindowText( m_hSideGroupBox, _TEXT("Players") );
 
-	m_hFiltersGroupBox = CreateWindowEx( 0, WC_BUTTON, _TEXT(""), WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | BS_GROUPBOX, 0, 400, GB_FILTERS_WIDTH, 120, m_hWnd, NULL, GetModuleHandle(NULL), NULL );
-	SetWindowText( m_hFiltersGroupBox, _TEXT("Rules") );
+	m_hFiltersGroupBox = CreateWindowEx( 0, WC_BUTTON, _TEXT(""), WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | BS_GROUPBOX, 0, 400, 800, 120, m_hWnd, NULL, GetModuleHandle(NULL), NULL );
+	SetWindowText( m_hFiltersGroupBox, _TEXT("Server Info") );
 
-	m_hInfoGroupBox = CreateWindowEx( 0, WC_BUTTON, _TEXT(""), WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | BS_GROUPBOX, GB_FILTERS_WIDTH, 400, 450, 120, m_hWnd, NULL, GetModuleHandle(NULL), NULL );
-	SetWindowText( m_hInfoGroupBox, _TEXT("Server Info") );
+	HWND hServerName = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Name:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 20, 100, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	HWND hServerIP = CreateWindowEx( 0, WC_STATIC, _TEXT("Server IP:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 45, 100, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	HWND hServerPlayers = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Players:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 70, 100, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	HWND hServerPing = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Ping:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 95, 100, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
 
-	HWND hServerName = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Name:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 20, 100, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	HWND hServerIP = CreateWindowEx( 0, WC_STATIC, _TEXT("Server IP:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 45, 100, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	HWND hServerPlayers = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Players:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 70, 100, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	HWND hServerPing = CreateWindowEx( 0, WC_STATIC, _TEXT("Server Ping:"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_RIGHT, 10, 95, 100, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-
-	m_hLblServerName = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 20, 275, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	m_hLblServerIP = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 45, 275, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	m_hLblServerPlayers = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 70, 275, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
-	m_hLblServerPing = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 95, 275, 16, m_hInfoGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	m_hLblServerName = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 20, 700, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	m_hLblServerIP = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 45, 275, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	m_hLblServerPlayers = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 70, 275, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
+	m_hLblServerPing = CreateWindowEx( 0, WC_STATIC, _TEXT("---"),  WS_CHILD | WS_VISIBLE | SS_EDITCONTROL | SS_LEFT, 115, 95, 275, 16, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
 
 	//Static_SetText( m_hLblServerIP, "Testing" );
 
@@ -1516,7 +1779,6 @@ bool CMainWindow::CreateGroupBox( void )
 
 	SendMessage(m_hSideGroupBox, WM_SETFONT, (WPARAM)GetStockObject(ANSI_VAR_FONT), 0);
 	SendMessage(m_hFiltersGroupBox, WM_SETFONT, (WPARAM)GetStockObject(ANSI_VAR_FONT), 0);
-	SendMessage(m_hInfoGroupBox, WM_SETFONT, (WPARAM)GetStockObject(ANSI_VAR_FONT), 0);
 
 	return true;
 }
@@ -1721,11 +1983,11 @@ bool CMainWindow::CreateListViews( void )
 
 		lvC.iSubItem = 4;
 		lvC.cx = 60;
-		lvC.pszText = _TEXT("Map");
+		lvC.pszText = _TEXT("Game");
 		ListView_InsertColumn( m_hHistoryList, 4, &lvC);
 
 		lvC.iSubItem = 5;
-		lvC.cx = 95;
+		lvC.cx = 145;
 		lvC.pszText = _TEXT("Last Played");
 		ListView_InsertColumn( m_hHistoryList, 5, &lvC);
 
@@ -1782,34 +2044,6 @@ bool CMainWindow::CreateListViews( void )
 	}
 #endif
 
-	// Rules List
-	if ( m_hFiltersGroupBox )
-	{
-		m_hRulesList = CreateWindowEx( 0, WC_LISTVIEW, _TEXT(""), WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS , 2, 10, GB_FILTERS_WIDTH - 2, 100, m_hFiltersGroupBox, NULL, GetModuleHandle(NULL), NULL );
-
-		ListView_SetExtendedListViewStyle( m_hRulesList, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES );
-
-		// Setup the columsn
-		LV_COLUMN lvC;
-
-		lvC.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
-		lvC.fmt = LVCFMT_LEFT;
-
-		lvC.iSubItem = 0;
-		lvC.cx = 125;
-		lvC.pszText = _TEXT("Key");
-		ListView_InsertColumn( m_hRulesList, 0, &lvC);
-
-		lvC.iSubItem = 1;
-		lvC.cx = 250;
-		lvC.pszText = _TEXT("Value");
-		ListView_InsertColumn( m_hRulesList, 1, &lvC);
-
-		/*ListViewItem item( true, _TEXT("LU Test Server"), _TEXT("9999"), _TEXT("0/128"), _TEXT("GTA3") );
-
-		AddToFavsList( item );*/
-	}
-
 	return true;
 }
 
@@ -1841,7 +2075,7 @@ void CMainWindow::Resize( void )
 
 	if ( m_hFiltersGroupBox )
 	{
-		SetWindowPos( m_hFiltersGroupBox, NULL, 2, winRect.bottom - 120 - iStatusHeight, GB_FILTERS_WIDTH, 120, SWP_NOZORDER );
+		SetWindowPos( m_hFiltersGroupBox, NULL, 2, winRect.bottom - 120 - iStatusHeight, winRect.right - 4, 120, SWP_NOZORDER );
 
 		RECT filtersboxRect;
 		GetWindowRect( m_hFiltersGroupBox, &filtersboxRect );
@@ -1850,11 +2084,6 @@ void CMainWindow::Resize( void )
 
 		if ( m_hRulesList )
 			SetWindowPos( m_hRulesList, NULL, 2, 14, iFiltersBoxWidth - 4, iFiltersBoxHeight - 16, SWP_NOZORDER);
-	}
-
-	if ( m_hInfoGroupBox )
-	{
-		SetWindowPos( m_hInfoGroupBox, NULL, GB_FILTERS_WIDTH + 2, winRect.bottom - 120 - iStatusHeight, winRect.right - GB_FILTERS_WIDTH - 4, 120, SWP_NOZORDER );
 	}
 
 	if ( m_hSideGroupBox )
@@ -2072,6 +2301,17 @@ void CMainWindow::ClearInternetList( void )
 	m_uiInternetServers = 0;
 
 	ListView_DeleteAllItems( m_hInternetList );
+
+	LVCOLUMN pLastCol;
+	pLastCol.mask = LVCF_FMT;
+	unsigned int uiLastSort = g_sColumnSorting[ E_LT_INTERNET ].uiLastSort;
+	ListView_GetColumn( m_hInternetList, uiLastSort, &pLastCol );
+	pLastCol.fmt &= ~HDF_SORTDOWN & ~HDF_SORTUP;
+	ListView_SetColumn( m_hInternetList, uiLastSort, &pLastCol );
+
+	// Reset the sorting
+	g_sColumnSorting[ E_LT_INTERNET ].uiLastSort = 0;
+	g_sColumnSorting[ E_LT_INTERNET ].eSorting = E_LS_DESCENDING;
 }
 
 size_t CMainWindow::AddToOfficialList( CServers* p )
@@ -2108,18 +2348,40 @@ void CMainWindow::ClearOfficialList( void )
 	m_uiOfficialServers = 0;
 
 	ListView_DeleteAllItems( m_hOfficialList );
+
+	LVCOLUMN pLastCol;
+	pLastCol.mask = LVCF_FMT;
+	unsigned int uiLastSort = g_sColumnSorting[ E_LT_OFFICIAL ].uiLastSort;
+	ListView_GetColumn( m_hOfficialList, uiLastSort, &pLastCol );
+	pLastCol.fmt &= ~HDF_SORTDOWN & ~HDF_SORTUP;
+	ListView_SetColumn( m_hOfficialList, uiLastSort, &pLastCol );
+
+	// Reset the sorting
+	g_sColumnSorting[ E_LT_OFFICIAL ].uiLastSort = 0;
+	g_sColumnSorting[ E_LT_OFFICIAL ].eSorting = E_LS_DESCENDING;
 }
 
 #ifndef _NO_HISTORY
 size_t CMainWindow::AddToHistoryList( CHistoryServer* p )
 {
+	// Move the servers down the list
+	CServers* pServer = 0;
+	for ( unsigned int ui = m_uiHistoryServers; ui > 0; --ui )
+	{
+		m_lHistoryServers[ ui ] = m_lHistoryServers[ ui-1 ];
+		m_lHistoryServers[ ui-1 ] = 0;
+		pServer = m_lHistoryServers[ ui ]->GetServer();
+		if ( pServer )
+			pServer->SetListItem( E_LT_HISTORY, ui );
+	}
+
 	LV_ITEM litem;
 	litem.mask = LVIF_IMAGE;
 	litem.iImage = I_IMAGECALLBACK;
 	litem.iSubItem = 0;
-	litem.iItem = m_uiHistoryServers;
+	litem.iItem = 0;
 
-	m_lHistoryServers[ m_uiHistoryServers ] = p;
+	m_lHistoryServers[ 0 ] = p;
 
 	ListView_InsertItem( m_hHistoryList, &litem );
 
@@ -2128,17 +2390,24 @@ size_t CMainWindow::AddToHistoryList( CHistoryServer* p )
 
 void CMainWindow::ClearHistoryList( void )
 {
-	CServers* p = NULL;
+	CHistoryServer* p = NULL;
+	CServers* pServer = NULL;
 	for ( size_t ui = 0; ui < m_uiHistoryServers; ui++ )
 	{
 		p = m_lHistoryServers[ ui ];
 		if ( p )
 		{
-			p->SetListItem( E_LT_HISTORY, -1 );
-			m_lHistoryServers[ ui ] = NULL;
+			pServer = p->GetServer();
+			if ( pServer )
+			{
+				pServer->SetListItem( E_LT_HISTORY, -1 );
+				m_lHistoryServers[ ui ] = NULL;
 
-			if ( p->GetType() == E_LT_HISTORY ) CServerManager::Remove( p );
-			else p->SetType( (E_SERVER_TYPE)( p->GetType() ^ E_LT_HISTORY ) );
+				if ( pServer->GetType() != E_LT_HISTORY ) 
+					pServer->SetType( (E_SERVER_TYPE)( pServer->GetType() ^ E_LT_HISTORY ) );
+
+				CHistoryServerManager::Remove( p );
+			}
 
 		}
 	}
@@ -2168,7 +2437,78 @@ size_t CMainWindow::AddToLANList( CServers* p )
 void CMainWindow::UpdateFavsList( size_t index )
 {
 	ListView_Update( m_hFavsList, index );
+}
 
+void CMainWindow::ReorderFavsList( int iColumn )
+{
+	if ( !iColumn )
+		return;
+
+	LVCOLUMN pCol;
+	pCol.mask = LVCF_FMT;
+	ListView_GetColumn( m_hFavsList, iColumn, &pCol );
+	// If we sorted the same column last time, we switch between the 2
+	if ( g_sColumnSorting[ E_LT_FAV ].uiLastSort == iColumn )
+	{
+		if ( g_sColumnSorting[ E_LT_FAV ].eSorting == E_LS_ASCENDING )
+		{
+			g_sColumnSorting[ E_LT_FAV ].eSorting = E_LS_DESCENDING;
+			pCol.fmt = HDF_SORTDOWN;
+		}
+		else
+		{
+			g_sColumnSorting[ E_LT_FAV ].eSorting = E_LS_ASCENDING;
+			pCol.fmt = HDF_SORTUP;
+		}
+	}
+	else
+	{
+		LVCOLUMN pLastCol;
+		pLastCol.mask = LVCF_FMT;
+		unsigned int uiLastSort = g_sColumnSorting[ E_LT_FAV ].uiLastSort;
+		ListView_GetColumn( m_hFavsList, uiLastSort, &pLastCol );
+		pLastCol.fmt &= ~HDF_SORTDOWN & ~HDF_SORTUP;
+		ListView_SetColumn( m_hFavsList, uiLastSort, &pLastCol );
+
+		g_sColumnSorting[ E_LT_FAV ].eSorting = E_LS_DESCENDING;
+		pCol.fmt = HDF_SORTDOWN;
+	}
+
+	ListView_SetColumn( m_hFavsList, iColumn, &pCol );
+
+	g_sColumnSorting[ E_LT_FAV ].uiLastSort = iColumn;
+	g_currentSortList = E_LT_FAV;
+
+	switch ( iColumn )
+	{
+	case 1:
+		// Name
+		qsort( &m_lFavServers, m_uiFavServers, sizeof( void* ), CompareHostname );
+		break;
+	case 2:
+		// Ping
+		qsort( &m_lFavServers, m_uiFavServers, sizeof( void* ), ComparePing );
+		break;
+	case 3:
+		qsort( &m_lFavServers, m_uiFavServers, sizeof( void* ), ComparePlayers );
+		break;
+	case 4:
+		qsort( &m_lFavServers, m_uiFavServers, sizeof( void* ), CompareGameName );
+		break;
+	case 5:
+		qsort( &m_lFavServers, m_uiFavServers, sizeof( void* ), CompareGameMode );
+		break;
+	}
+
+	CServers* pServer = 0;
+	for ( unsigned int ui = 0; ui < m_uiFavServers; ++ui )
+	{
+		pServer = m_lFavServers[ ui ];
+		if ( pServer )
+			pServer->SetListItem( E_LT_FAV, ui );
+
+		ListView_Update( m_hFavsList, ui );
+	}
 }
 
 void CMainWindow::UpdateInternetList( size_t index )
@@ -2176,15 +2516,184 @@ void CMainWindow::UpdateInternetList( size_t index )
 	ListView_Update( m_hInternetList, index );
 }
 
+void CMainWindow::ReorderInternetList( int iColumn )
+{
+	if ( !iColumn )
+		return;
+
+	LVCOLUMN pCol;
+	pCol.mask = LVCF_FMT;
+	ListView_GetColumn( m_hInternetList, iColumn, &pCol );
+
+	// If we sorted the same column last time, we switch between the 2
+	if ( g_sColumnSorting[ E_LT_INTERNET ].uiLastSort == iColumn )
+	{
+		if ( g_sColumnSorting[ E_LT_INTERNET ].eSorting == E_LS_ASCENDING )
+		{
+			g_sColumnSorting[ E_LT_INTERNET ].eSorting = E_LS_DESCENDING;
+			pCol.fmt = HDF_SORTDOWN;
+		}
+		else
+		{
+			g_sColumnSorting[ E_LT_INTERNET ].eSorting = E_LS_ASCENDING;
+			pCol.fmt = HDF_SORTUP;
+		}
+	}
+	else
+	{
+		LVCOLUMN pLastCol;
+		pLastCol.mask = LVCF_FMT;
+		unsigned int uiLastSort = g_sColumnSorting[ E_LT_INTERNET ].uiLastSort;
+		ListView_GetColumn( m_hInternetList, uiLastSort, &pLastCol );
+		pLastCol.fmt &= ~HDF_SORTDOWN & ~HDF_SORTUP;
+		ListView_SetColumn( m_hInternetList, uiLastSort, &pLastCol );
+
+		g_sColumnSorting[ E_LT_INTERNET ].eSorting = E_LS_DESCENDING;
+		pCol.fmt = HDF_SORTDOWN;
+	}
+
+	ListView_SetColumn( m_hInternetList, iColumn, &pCol );
+
+	g_sColumnSorting[ E_LT_INTERNET ].uiLastSort = iColumn;
+	g_currentSortList = E_LT_INTERNET;
+
+	switch ( iColumn )
+	{
+	case 1:
+		// Name
+		qsort( &m_lInternetServers, m_uiInternetServers, sizeof( void* ), CompareHostname );
+		break;
+	case 2:
+		// Ping
+		qsort( &m_lInternetServers, m_uiInternetServers, sizeof( void* ), ComparePing );
+		break;
+	case 3:
+		qsort( &m_lInternetServers, m_uiInternetServers, sizeof( void* ), ComparePlayers );
+		break;
+	case 4:
+		qsort( &m_lInternetServers, m_uiInternetServers, sizeof( void* ), CompareGameName );
+		break;
+	case 5:
+		qsort( &m_lInternetServers, m_uiInternetServers, sizeof( void* ), CompareGameMode );
+		break;
+	}
+
+	CServers* pServer = 0;
+	for ( unsigned int ui = 0; ui < m_uiInternetServers; ++ui )
+	{
+		pServer = m_lInternetServers[ ui ];
+		if ( pServer )
+			pServer->SetListItem( E_LT_INTERNET, ui );
+
+		ListView_Update( m_hInternetList, ui );
+	}
+}
+
 void CMainWindow::UpdateOfficialList( size_t index )
 {
 	ListView_Update( m_hOfficialList, index );
+}
+
+void CMainWindow::ReorderOfficialList( int iColumn )
+{
+	if ( !iColumn )
+		return;
+
+	LVCOLUMN pCol;
+	pCol.mask = LVCF_FMT;
+	ListView_GetColumn( m_hOfficialList, iColumn, &pCol );
+	// If we sorted the same column last time, we switch between the 2
+	if ( g_sColumnSorting[ E_LT_OFFICIAL ].uiLastSort == iColumn )
+	{
+		if ( g_sColumnSorting[ E_LT_OFFICIAL ].eSorting == E_LS_ASCENDING )
+		{
+			g_sColumnSorting[ E_LT_OFFICIAL ].eSorting = E_LS_DESCENDING;
+			pCol.fmt = HDF_SORTDOWN;
+		}
+		else
+		{
+			g_sColumnSorting[ E_LT_OFFICIAL ].eSorting = E_LS_ASCENDING;
+			pCol.fmt = HDF_SORTUP;
+		}
+	}
+	else
+	{
+		LVCOLUMN pLastCol;
+		pLastCol.mask = LVCF_FMT;
+		unsigned int uiLastSort = g_sColumnSorting[ E_LT_OFFICIAL ].uiLastSort;
+		ListView_GetColumn( m_hOfficialList, uiLastSort, &pLastCol );
+		pLastCol.fmt &= ~HDF_SORTDOWN & ~HDF_SORTUP;
+		ListView_SetColumn( m_hOfficialList, uiLastSort, &pLastCol );
+
+		g_sColumnSorting[ E_LT_OFFICIAL ].eSorting = E_LS_DESCENDING;
+		pCol.fmt = HDF_SORTDOWN;
+	}
+
+	ListView_SetColumn( m_hOfficialList, iColumn, &pCol );
+
+	g_sColumnSorting[ E_LT_OFFICIAL ].uiLastSort = iColumn;
+	g_currentSortList = E_LT_OFFICIAL;
+
+	switch ( iColumn )
+	{
+	case 1:
+		// Name
+		qsort( &m_lOfficialServers, m_uiOfficialServers, sizeof( void* ), CompareHostname );
+		break;
+	case 2:
+		// Ping
+		qsort( &m_lOfficialServers, m_uiOfficialServers, sizeof( void* ), ComparePing );
+		break;
+	case 3:
+		qsort( &m_lOfficialServers, m_uiOfficialServers, sizeof( void* ), ComparePlayers );
+		break;
+	case 4:
+		qsort( &m_lOfficialServers, m_uiOfficialServers, sizeof( void* ), CompareGameName );
+		break;
+	case 5:
+		qsort( &m_lOfficialServers, m_uiOfficialServers, sizeof( void* ), CompareGameMode );
+		break;
+	}
+
+	CServers* pServer = 0;
+	for ( unsigned int ui = 0; ui < m_uiOfficialServers; ++ui )
+	{
+		pServer = m_lOfficialServers[ ui ];
+		if ( pServer )
+			pServer->SetListItem( E_LT_OFFICIAL, ui );
+
+		ListView_Update( m_hOfficialList, ui );
+	}
 }
 
 #ifndef _NO_HISTORY
 void CMainWindow::UpdateHistoryList( size_t index )
 {
 	ListView_Update( m_hHistoryList, index );
+}
+#endif
+
+#ifndef _NO_HISTORY
+void CMainWindow::ReorderHistoryList()
+{
+	qsort( &m_lHistoryServers, m_uiHistoryServers, sizeof( void* ), CompareTime );
+
+	CServers* pServer = 0;
+	for ( unsigned int ui = 0; ui < m_uiHistoryServers; ++ui )
+	{
+		pServer = m_lHistoryServers[ ui ]->GetServer();
+		if ( pServer )
+			pServer->SetListItem( E_LT_HISTORY, ui );
+
+		ListView_Update( m_hHistoryList, ui );
+	}
+
+#ifdef _WITH_JUMPLIST
+	CWin7::BeginList();
+	CWin7::CreateTasksList();
+	CWin7::CreateCustomList();
+	CWin7::EndList();
+#endif
 }
 #endif
 
@@ -2245,4 +2754,19 @@ void CMainWindow::ClearPlayerList()
 int CMainWindow::GetCurrentTab( void )
 {
 	return TabCtrl_GetCurSel( m_hTabControl );
+}
+
+void CMainWindow::SetCurrentTab( int i )
+{
+	TabCtrl_SetCurSel( m_hTabControl, i );
+
+	NMHDR nmh;
+	nmh.code = TCN_SELCHANGE;    // Message type defined by control.
+	nmh.idFrom = GetDlgCtrlID(m_hTabControl);
+	nmh.hwndFrom = m_hTabControl;
+
+	SendMessage(GetParent(m_hTabControl), 
+		WM_NOTIFY, 
+		(WPARAM)m_hTabControl, 
+		(LPARAM)&nmh);
 }

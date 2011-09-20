@@ -298,15 +298,314 @@ void CServers::UpdatePlayerList( void )
 #ifndef _NO_HISTORY
 void CHistoryServer::UpdateList( void )
 {
-	if ( m_eType & E_ST_HISTORY ) 
+	if ( m_pServer )
 	{
-		if ( m_uiListItem[ E_LT_HISTORY ] == -1 )
+		if ( m_pServer->GetType() & E_ST_HISTORY ) 
 		{
-			m_uiListItem[ E_LT_HISTORY ] = CMainWindow::AddToHistoryList( this );
-		}
-		else CMainWindow::UpdateHistoryList( m_uiListItem[ E_LT_HISTORY ] );
+			if ( m_pServer->GetListItem( E_LT_HISTORY ) == -1 )
+			{
+				m_pServer->SetListItem( E_LT_HISTORY, CMainWindow::AddToHistoryList( this ) );
 
-		CMainWindow::UpdateServerInfo( m_uiListItem[ E_LT_HISTORY ], this );
+				CMainWindow::ReorderHistoryList();
+			}
+			else CMainWindow::UpdateHistoryList( m_pServer->GetListItem( E_LT_HISTORY ) );
+
+			CMainWindow::UpdateServerInfo( m_pServer->GetListItem( E_LT_HISTORY ), m_pServer );
+		}
+
+		m_pServer->UpdateList();
 	}
+}
+#endif
+
+size_t CServerManager::m_uiCount = 0;
+size_t CServerManager::m_uiLastFreeID = 0;
+CServers* CServerManager::m_Servers[ MAX_SERVERS ] = { 0 };
+
+CServers* CServerManager::New( void )
+{
+	size_t ui = m_uiLastFreeID;
+
+	if ( ui < MAX_SERVERS )
+	{
+		CServers* p = new CServers( ui );
+		m_Servers[ ui ] = p;
+		++m_uiCount;
+
+		++m_uiLastFreeID = FindFreeID();
+
+		return p;
+	}
+
+	return NULL;
+}
+
+CServers* CServerManager::New( CServers* pOld )
+{
+	size_t ui = m_uiLastFreeID;
+
+	if ( ui < MAX_SERVERS )
+	{
+		CServers* p = new CServers( ui, *pOld );
+		m_Servers[ ui ] = p;
+		++m_uiCount;
+
+		++m_uiLastFreeID = FindFreeID();
+
+		return p;
+	}
+
+	return NULL;
+}
+
+CServers* CServerManager::Find( const char* szIP, unsigned short usPort )
+{
+	size_t ui = 0, ui1 = 0;
+	CServers* p = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			if ( p->GetServerPort() == usPort )
+			{
+				if ( str_equalA( p->GetServerIP(), szIP ) ) return p;
+			}
+			++ui1;
+		}
+		++ui;
+	}
+
+	return NULL;
+}
+
+CServers* CServerManager::FindIndex( unsigned int uiTab, size_t uiIndex )
+{
+	size_t ui = 0, ui1 = 0;
+	CServers* p = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			if ( p->GetListItem( uiTab ) == uiIndex ) return p;
+			++ui1;
+		}
+		++ui;
+	}
+
+	return NULL;
+}
+
+bool CServerManager::Remove( const CServers *p )
+{
+	if ( !p ) return false;
+
+	size_t ui = p->GetID();
+
+	m_Servers[ ui ] = 0;
+	--m_uiCount;
+
+	delete p;
+
+	if ( ui < m_uiLastFreeID ) 
+		m_uiLastFreeID = ui;
+
+	return true;
+}
+
+void CServerManager::RemoveAll( void )
+{
+	size_t ui = 0, ui1 = 0;
+	CServers* p = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			m_Servers[ ui ] = 0;
+
+			delete p;
+
+			++ui1;
+		}
+
+		++ui;
+	}
+
+	m_uiCount = 0;
+	m_uiLastFreeID = 0;
+}
+
+size_t CServerManager::CountType( const E_SERVER_TYPE eType )
+{
+	size_t uiCount = 0;
+	size_t ui = 0, ui1 = 0;
+	CServers* p = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			if ( p->GetType() & eType ) uiCount++;
+			ui1++;
+		}
+		ui++;
+	}
+
+	return uiCount;
+}
+
+size_t CServerManager::FindFreeID( void )
+{
+	for ( size_t ui = m_uiLastFreeID; ui < MAX_SERVERS; ++ui )
+	{
+		if ( !m_Servers[ ui ] ) return ui;
+	}
+
+	return MAX_SERVERS;
+}
+
+#ifndef _NO_HISTORY
+
+size_t CHistoryServerManager::m_uiCount = 0;
+size_t CHistoryServerManager::m_uiLastFreeID = 0;
+CHistoryServer* CHistoryServerManager::m_Servers[ MAX_SERVERS ] = { 0 };
+
+CHistoryServer* CHistoryServerManager::New( void )
+{
+	size_t ui = m_uiLastFreeID;
+
+	if ( ui < MAX_SERVERS )
+	{
+		CHistoryServer* p = new CHistoryServer( ui );
+		m_Servers[ ui ] = p;
+		++m_uiCount;
+
+		++m_uiLastFreeID = FindFreeID();
+
+		return p;
+	}
+
+	return NULL;
+}
+
+CHistoryServer* CHistoryServerManager::New( CServers* pServer )
+{
+	size_t ui = m_uiLastFreeID;
+
+	if ( ui < MAX_SERVERS )
+	{
+		CHistoryServer* p = new CHistoryServer( ui, pServer );
+		m_Servers[ ui ] = p;
+		++m_uiCount;
+
+		++m_uiLastFreeID = FindFreeID();
+
+		return p;
+	}
+
+	return NULL;
+}
+
+CHistoryServer* CHistoryServerManager::Find( const char* szIP, unsigned short usPort )
+{
+	size_t ui = 0, ui1 = 0;
+	CHistoryServer* p = 0;
+	CServers* pServer = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			pServer = p->GetServer();
+			if ( pServer )
+			{
+				if ( pServer->GetServerPort() == usPort )
+				{
+					if ( str_equalA( pServer->GetServerIP(), szIP ) ) 
+						return p;
+				}
+			}
+			++ui1;
+		}
+		++ui;
+	}
+
+	return NULL;
+}
+
+CHistoryServer* CHistoryServerManager::FindIndex( size_t uiIndex )
+{
+	size_t ui = 0, ui1 = 0;
+	CHistoryServer* p = 0;
+	CServers* pServer = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			pServer = p->GetServer();
+			if ( pServer )
+			{
+				if ( pServer->GetListItem( E_LT_HISTORY ) == uiIndex ) 
+					return p;
+			}
+			++ui1;
+		}
+		++ui;
+	}
+
+	return NULL;
+}
+
+bool CHistoryServerManager::Remove( const CHistoryServer *p )
+{
+	if ( !p ) return false;
+
+	size_t ui = p->GetID();
+
+	m_Servers[ ui ] = 0;
+	--m_uiCount;
+
+	delete p;
+
+	if ( ui < m_uiLastFreeID ) 
+		m_uiLastFreeID = ui;
+
+	return true;
+}
+
+void CHistoryServerManager::RemoveAll( void )
+{
+	size_t ui = 0, ui1 = 0;
+	CHistoryServer* p = 0;
+	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
+	{
+		p = m_Servers[ ui ];
+		if ( p )
+		{
+			m_Servers[ ui ] = 0;
+
+			delete p;
+
+			++ui1;
+		}
+
+		++ui;
+	}
+
+	m_uiCount = 0;
+	m_uiLastFreeID = 0;
+}
+
+size_t CHistoryServerManager::FindFreeID( void )
+{
+	for ( size_t ui = m_uiLastFreeID; ui < MAX_SERVERS; ++ui )
+	{
+		if ( !m_Servers[ ui ] ) return ui;
+	}
+
+	return MAX_SERVERS;
 }
 #endif

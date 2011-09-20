@@ -25,7 +25,9 @@ class CPlayers;
 
 // Comment this to enable a LAN tab
 #define _NO_LAN_MODE
-#define _NO_HISTORY
+//#define _NO_HISTORY
+
+#define _WITH_JUMPLIST 1
 
 #ifndef _NO_LAN_MODE
 #ifdef _NO_HISTORY
@@ -40,6 +42,24 @@ class CPlayers;
 #define WM_UPDATESERVERLIST (WM_APP+1)
 #define WM_UPDATEPLAYERLIST (WM_APP+2)
 #define WM_UPDATERULESLIST (WM_APP+3)
+#define WM_UPDATEHISTORYSERVERLIST (WM_APP+4)
+
+enum E_LISTSORT
+{
+	E_LS_ASCENDING,
+	E_LS_DESCENDING
+};
+
+struct sColumnSorting
+{
+	sColumnSorting()
+		: uiLastSort( 0 ), eSorting( E_LS_DESCENDING )
+	{
+	}
+
+	unsigned int uiLastSort;
+	E_LISTSORT eSorting;
+};
 
 class CMainWindow
 {
@@ -100,10 +120,14 @@ public:
 #endif
 
 	static void							UpdateFavsList				( size_t index );
+	static void							ReorderFavsList				( int iColumn );
 	static void							UpdateInternetList			( size_t index );
+	static void							ReorderInternetList			( int iColumn );
 	static void							UpdateOfficialList			( size_t index );
+	static void							ReorderOfficialList			( int iColumn );
 #ifndef _NO_HISTORY
 	static void							UpdateHistoryList			( size_t index );
+	static void							ReorderHistoryList			( void );
 #endif
 #ifndef _NO_LAN_MODE
 	static void							UpdateLANList				( size_t index );
@@ -114,6 +138,7 @@ public:
 	static void							ClearPlayerList				( void );
 
 	static int							GetCurrentTab				( void );
+	static void							SetCurrentTab				( int );
 
 private:
 	static HWND							m_hWnd;
@@ -121,7 +146,6 @@ private:
 	static HWND							m_hTabControl;
 	static HWND							m_hSideGroupBox;
 	static HWND							m_hFiltersGroupBox;
-	static HWND							m_hInfoGroupBox;
 	static HWND							m_hPlayerList;
 
 	// List Views

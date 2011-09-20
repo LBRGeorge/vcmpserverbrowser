@@ -1,5 +1,6 @@
 #include "ServerQuery.h"
 #include <process.h>
+#include "vcmpq/vcmpq.h"
 
 SOCKET CServerQuery::m_pSocket = 0;
 HANDLE CServerQuery::m_hThread = 0;
@@ -89,7 +90,7 @@ unsigned __stdcall QueryListen( void* p )
 				char szPlayers[ 2 ] = { 0 };
 				char szMaxPlayers[ 2 ] = { 0 };
 				char szNameLen[ 4 ] = { 0 };
-				char szServerName[ 64 ] = { 0 };
+				char szServerName[ 128 ] = { 0 };
 				char szModeLen[ 4 ] = { 0 };
 				char szModeName[ 64 ] = { 0 };
 				char szMapLen[ 4 ] = { 0 };
@@ -104,16 +105,19 @@ unsigned __stdcall QueryListen( void* p )
 				uiLen += 4;
 				unsigned int uiNameLen = (char)szNameLen[ 0 ];
 				memcpy( &szServerName[ 0 ], buf + uiLen, uiNameLen );
+				szServerName[ uiNameLen ] = 0;
 				uiLen += uiNameLen;
 				memcpy( &szModeLen[ 0 ], buf + uiLen, 4 );
 				uiLen += 4;
 				unsigned int uiModeLen = (char)szModeLen[ 0 ];
 				memcpy( &szModeName[ 0 ], buf + uiLen, uiModeLen );
+				szModeName[ uiModeLen ] = 0;
 				uiLen += uiModeLen;
 				memcpy( &szMapLen[ 0 ], buf + uiLen, 4 );
 				uiLen += 4;
 				unsigned int uiMapLen = (char)szMapLen[ 0 ];
 				memcpy( &szMapName[ 0 ], buf + uiLen, uiMapLen );
+				szMapName[ uiMapLen ] = 0;
 				uiLen += uiMapLen;
 
 				if ( (char)szIsPassworded[ 0 ] ) pServer->SetLocked( true );
@@ -162,6 +166,7 @@ unsigned __stdcall QueryListen( void* p )
 
 						ucNameLen = (unsigned char)szNameLen[ 0 ];
 						memcpy( &szName[ 0 ], buf + uiLen, ucNameLen );
+						szName[ ucNameLen ] = 0;
 						uiLen += ucNameLen;
 						memcpy( &szScore[ 0 ], buf + uiLen, 4 );
 						uiLen += 4;
@@ -251,26 +256,17 @@ clock_t CServerQuery::Query( const char* szIP, unsigned short usPort )
 	pTarget.sin_port = htons( usPort ); //Port to connect on
 	pTarget.sin_addr.s_addr = *( (unsigned long*)he->h_addr ); //Target IP
 
-	char* szTemp = inet_ntoa( pTarget.sin_addr );
-	char c1[ 4 ] = { 0 };
-	char c2[ 4 ] = { 0 };
-	char c3[ 4 ] = { 0 };
-	char c4[ 4 ] = { 0 };
-	char c5[ 4 ] = { 0 };
-	char c6[ 4 ] = { 0 };
-	strcpy_s( c1, strtok( szTemp, "." ) );
-	strcpy_s( c2, strtok( 0, "." ) );
-	strcpy_s( c3, strtok( 0, "." ) );
-	strcpy_s( c4, strtok( 0, "." ) );
-	sprintf_s( c5, "%i", usPort & 0xFF );
-	sprintf_s( c6, "%i", usPort >> 8 & 0xFF );
+	static unsigned char szBuf[ 12 ]= { 0 };
+	vcmpq_request pRequest;
 
-	char szOutput[ 12 ]= { 0 };
-	sprintf_s( szOutput, "VCMP%c%c%c%c%c%ci", atoi( c1 ), atoi( c2 ), atoi( c3 ), atoi( c4 ), atoi( c5 ), atoi( c6 ) );
-
+	pRequest.ulIP = pTarget.sin_addr.s_addr;
+	pRequest.usPort = usPort;
+	pRequest.eRequestType = VCMPQ_HEADERTYPE_QUERY;
+	VCMPQ_CreateQuery( pRequest, szBuf );
+	
 	if ( m_pSocket )
 	{
-		int iLen = sendto( m_pSocket, (char*)szOutput, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
+		int iLen = sendto( m_pSocket, (char*)szBuf, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
 
 		if ( iLen == 0 )
 		{
@@ -296,27 +292,17 @@ clock_t CServerQuery::QueryWithPlayers( const char* szIP, unsigned short usPort 
 	pTarget.sin_port = htons( usPort ); //Port to connect on
 	pTarget.sin_addr.s_addr = *( (unsigned long*)he->h_addr ); //Target IP
 
-	char* szTemp = inet_ntoa( pTarget.sin_addr );
-	char c1[ 4 ] = { 0 };
-	char c2[ 4 ] = { 0 };
-	char c3[ 4 ] = { 0 };
-	char c4[ 4 ] = { 0 };
-	char c5[ 4 ] = { 0 };
-	char c6[ 4 ] = { 0 };
-	strcpy_s( c1, strtok( szTemp, "." ) );
-	strcpy_s( c2, strtok( 0, "." ) );
-	strcpy_s( c3, strtok( 0, "." ) );
-	strcpy_s( c4, strtok( 0, "." ) );
-	sprintf_s( c5, "%i", usPort & 0xFF );
-	sprintf_s( c6, "%i", usPort >> 8 & 0xFF );
+	static unsigned char szBuf[ 12 ]= { 0 };
+	vcmpq_request pRequest;
 
-	char szOutput[ 12 ]= { 0 };
-	// Run the normal query first
-	sprintf_s( szOutput, "VCMP%c%c%c%c%c%ci", atoi( c1 ), atoi( c2 ), atoi( c3 ), atoi( c4 ), atoi( c5 ), atoi( c6 ) );
+	pRequest.ulIP = pTarget.sin_addr.s_addr;
+	pRequest.usPort = usPort;
+	pRequest.eRequestType = VCMPQ_HEADERTYPE_QUERY;
+	VCMPQ_CreateQuery( pRequest, szBuf );
 
 	if ( m_pSocket )
 	{
-		int iLen = sendto( m_pSocket, (char*)szOutput, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
+		int iLen = sendto( m_pSocket, (char*)szBuf, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
 
 		if ( iLen == 0 )
 		{
@@ -324,9 +310,10 @@ clock_t CServerQuery::QueryWithPlayers( const char* szIP, unsigned short usPort 
 		}
 		else
 		{
-			sprintf_s( szOutput, "VCMP%c%c%c%c%c%cc", atoi( c1 ), atoi( c2 ), atoi( c3 ), atoi( c4 ), atoi( c5 ), atoi( c6 ) );
+			pRequest.eRequestType = VCMPQ_HEADERTYPE_PLAYERS;
+			VCMPQ_CreateQuery( pRequest, szBuf );
 
-			iLen = sendto( m_pSocket, (char*)szOutput, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
+			iLen = sendto( m_pSocket, (char*)szBuf, 11, 0, (const sockaddr*)&pTarget, sizeof( struct sockaddr ) );
 
 			if ( iLen == 0 )
 			{
