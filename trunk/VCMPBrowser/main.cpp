@@ -200,7 +200,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	TCHAR szFile[ 384 ] = { NULL };
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/VCMP" ) );
+	_tcscat( szFile, _TEXT( "\\VCMP" ) );
 	_tmkdir( szFile );
 
 

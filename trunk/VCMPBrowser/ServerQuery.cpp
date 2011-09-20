@@ -349,6 +349,8 @@ void CServerQuery::UpdateInternetList( void )
 		return;
 	}
 
+	char* oldList = szList;
+
 	char* context	= NULL;
 	// Have to use strtok_r here since we use strtok in the Query, and it screws things over
 	// Could be done better but this isnt the most amazing code ever
@@ -382,6 +384,8 @@ void CServerQuery::UpdateInternetList( void )
 
 		szList = strtok_s( 0, "\n", &context );
 	}
+
+	free( oldList );
 }
 
 void CServerQuery::UpdateOfficialList( void )
@@ -394,6 +398,8 @@ void CServerQuery::UpdateOfficialList( void )
 		MessageBox( 0, _TEXT( "Unable to contact master list" ), _TEXT( "Error" ), MB_ICONEXCLAMATION | MB_OK );
 		return;
 	}
+
+	char* oldList = szList;
 
 	char* context	= NULL;
 	szList = strtok_s( szList, "\n", &context );
@@ -426,4 +432,6 @@ void CServerQuery::UpdateOfficialList( void )
 
 		szList = strtok_s( 0, "\n", &context );
 	}
+
+	free( oldList );
 }

@@ -61,7 +61,7 @@ void CFavourites::Load( void )
 {
 	TCHAR szFile[ 384 ] = { NULL };
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/VCMP/Favourites.uft" ) );
+	_tcscat( szFile, _TEXT( "\\VCMP\\Favourites.uft" ) );
 
 	FILE* file = fopen( szFile, "r" );
 	if ( file )
@@ -72,7 +72,7 @@ void CFavourites::Load( void )
 	}
 
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/VCMP/Passwords.uft" ) );
+	_tcscat( szFile, _TEXT( "\\VCMP\\Passwords.uft" ) );
 
 	file = fopen( szFile, "r" );
 	if ( file )
@@ -87,14 +87,14 @@ void CFavourites::Write( void )
 {
 	TCHAR szFile[ 384 ] = { NULL };
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/VCMP/Favourites.uft" ) );
+	_tcscat( szFile, _TEXT( "\\VCMP\\Favourites.uft" ) );
 
 	unsigned int uiFavServers = CServerManager::CountType( E_ST_FAV );
 
 	UFT_File_Type* pFile = UFT_BeginFile( szFile );
 
 	_tcscpy( szFile, g_szAppDataDir );
-	_tcscat( szFile, _TEXT( "/VCMP/Passwords.uft" ) );
+	_tcscat( szFile, _TEXT( "\\VCMP\\Passwords.uft" ) );
 
 	UFT_File_Type* pPassFile = UFT_BeginFile( szFile );
 
