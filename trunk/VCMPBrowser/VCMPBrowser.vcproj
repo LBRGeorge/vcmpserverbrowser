@@ -523,6 +523,22 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="vcmpquery"
+			>
+			<File
+				RelativePath=".\vcmpq\vcmpq.c"
+				>
+			</File>
+			<File
+				RelativePath=".\vcmpq\vcmpq.h"
+				>
+			</File>
+			<File
+				RelativePath=".\vcmpq\vcmpq_defines.h"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath=".\app.ico"
 			>
@@ -533,6 +549,14 @@
 		</File>
 		<File
 			RelativePath=".\Favourites.h"
+			>
+		</File>
+		<File
+			RelativePath=".\History.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\History.h"
 			>
 		</File>
 		<File
@@ -609,6 +633,14 @@
 		</File>
 		<File
 			RelativePath=".\VCMPBrowser.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\Win7.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\Win7.h"
 			>
 		</File>
 	</Files>

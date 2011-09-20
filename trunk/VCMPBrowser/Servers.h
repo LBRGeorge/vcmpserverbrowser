@@ -18,7 +18,9 @@ enum E_LISTTYPE
 	E_LT_INTERNET,
 	E_LT_OFFICIAL,
 	E_LT_HISTORY,
-	E_LT_LAN
+	E_LT_LAN,
+
+	E_LT_COUNT
 };
 
 class CPlayers
@@ -182,50 +184,57 @@ protected:
 };
 
 #ifndef _NO_HISTORY
-class CHistoryServer : public CServers
+class CHistoryServer
 {
 public:
 	CHistoryServer( size_t uiID )
-		: CServers( uiID ), m_uiLastPlayed(0)
+		: m_uiID( uiID ), m_pServer( 0 ), m_uiLastPlayed(0)
 	{
 	}
-	CHistoryServer( size_t uiID, const CServers& p )
-		: CServers( uiID, p )
+	CHistoryServer( size_t uiID, CServers* p )
+		: m_uiID( uiID ), m_pServer( p ), m_uiLastPlayed(0)
 	{
 	}
-	~CHistoryServer( void )
+	virtual ~CHistoryServer( void )
 	{
 	}
 
-	const clock_t					GetLastPlayed			( void ) const				{ return m_uiLastPlayed; }
-	void							SetLastPlayed			( const clock_t& ui )		{ m_uiLastPlayed = ui; }
+	const unsigned int				GetID					( void ) const				{ return m_uiID; }
+
+	CServers*						GetServer				( void ) const				{ return m_pServer; }
+	void							SetServer				( CServers* p )				{ m_pServer = p; }
+
+	const time_t					GetLastPlayed			( void ) const				{ return m_uiLastPlayed; }
+	void							SetLastPlayed			( const time_t& ui )		{ m_uiLastPlayed = ui; }
 
 	virtual void					UpdateList				( void );
 
 private:
-	clock_t							m_uiLastPlayed;
+	unsigned int					m_uiID;
+
+	CServers*						m_pServer;
+	time_t							m_uiLastPlayed;
 };
 #endif
 
-template <class T>
-class CTmplServerManager
+class CServerManager
 {
 public:
-	static T*						New						( void );
-	static T*						New						( const CServers& pOld );
+	static CServers*				New						( void );
+	static CServers*				New						( CServers* pOld );
 
-	static T*						Find					( size_t uiID )
+	static CServers*				Find					( size_t uiID )
 	{
 		if ( uiID < MAX_SERVERS ) return m_Servers[ uiID ];
 
 		return 0;
 	}
 
-	static T*						Find					( const char* szIP, unsigned short usPort );
+	static CServers*				Find					( const char* szIP, unsigned short usPort );
 
-	static T*						FindIndex				( size_t uiIndex );
+	static CServers*				FindIndex				( unsigned int uiTab, size_t uiIndex );
 	
-	static bool						Remove					( const T* p );
+	static bool						Remove					( const CServers* p );
 
 	static void						RemoveAll				( void );
 
@@ -238,171 +247,39 @@ private:
 	static size_t					m_uiCount;
 	static size_t					m_uiLastFreeID;
 
-	static T*						m_Servers[ MAX_SERVERS ];
+	static CServers*				m_Servers[ MAX_SERVERS ];
 };
 
-template <class T>
-size_t CTmplServerManager<T>::m_uiCount = 0;
-template <class T>
-size_t CTmplServerManager<T>::m_uiLastFreeID = 0;
-template <class T>
-T* CTmplServerManager<T>::m_Servers[ MAX_SERVERS ] = { 0 };
-
-template <class T>
-T* CTmplServerManager<T>::New( void )
-{
-	size_t ui = m_uiLastFreeID;
-
-	if ( ui < MAX_SERVERS )
-	{
-		T* p = new T( ui );
-		m_Servers[ ui ] = p;
-		m_uiCount++;
-
-		m_uiLastFreeID++;
-		m_uiLastFreeID = FindFreeID();
-
-		return p;
-	}
-
-	return NULL;
-}
-
-template <class T>
-T* CTmplServerManager<T>::New( const CServers& pOld )
-{
-	size_t ui = m_uiLastFreeID;
-
-	if ( ui < MAX_SERVERS )
-	{
-		T* p = new T( ui, pOld );
-		m_Servers[ ui ] = p;
-		m_uiCount++;
-
-		m_uiLastFreeID++;
-		m_uiLastFreeID = FindFreeID();
-
-		return p;
-	}
-
-	return NULL;
-}
-
-template <class T>
-T* CTmplServerManager<T>::Find( const char* szIP, unsigned short usPort )
-{
-	size_t ui = 0, ui1 = 0;
-	T* p = 0;
-	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
-	{
-		p = m_Servers[ ui ];
-		if ( p )
-		{
-			if ( p->GetServerPort() == usPort )
-			{
-				if ( str_equalA( p->GetServerIP(), szIP ) ) return p;
-			}
-			ui1++;
-		}
-		ui++;
-	}
-
-	return NULL;
-}
-
-template <class T>
-T* CTmplServerManager<T>::FindIndex( size_t uiIndex )
-{
-	size_t ui = 0, ui1 = 0;
-	T* p = 0;
-	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
-	{
-		p = m_Servers[ ui ];
-		if ( p )
-		{
-			if ( p->GetListItem() == uiIndex ) return p;
-			ui1++;
-		}
-		ui++;
-	}
-
-	return NULL;
-}
-
-template <class T>
-bool CTmplServerManager<T>::Remove( const T *p )
-{
-	if ( !p ) return false;
-
-	size_t ui = p->GetID();
-
-	m_Servers[ ui ] = 0;
-	m_uiCount--;
-
-	delete p;
-
-	if ( ui < m_uiLastFreeID ) m_uiLastFreeID = ui;
-
-	return true;
-}
-
-template <class T>
-void CTmplServerManager<T>::RemoveAll( void )
-{
-	size_t ui = 0, ui1 = 0;
-	T* p = 0;
-	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
-	{
-		p = m_Servers[ ui ];
-		if ( p )
-		{
-			m_Servers[ ui ] = 0;
-
-			delete p;
-
-			ui1++;
-		}
-
-		ui++;
-	}
-
-	m_uiCount = 0;
-	m_uiLastFreeID = 0;
-}
-
-template <class T>
-size_t CTmplServerManager<T>::CountType( const E_SERVER_TYPE eType )
-{
-	size_t uiCount = 0;
-	size_t ui = 0, ui1 = 0;
-	T* p = 0;
-	while ( ( ui < MAX_SERVERS ) && ( ui1 < m_uiCount ) )
-	{
-		p = m_Servers[ ui ];
-		if ( p )
-		{
-			if ( p->GetType() & eType ) uiCount++;
-			ui1++;
-		}
-		ui++;
-	}
-
-	return uiCount;
-}
-
-template <class T>
-size_t CTmplServerManager<T>::FindFreeID( void )
-{
-	for ( size_t ui = m_uiLastFreeID; ui < MAX_SERVERS; ui++ )
-	{
-		if ( !m_Servers[ ui ] ) return ui;
-	}
-
-	return MAX_SERVERS;
-}
-
-
-#define CServerManager CTmplServerManager< CServers >
 #ifndef _NO_HISTORY
-#define CHistoryServerManager CTmplServerManager< CHistoryServer >
+class CHistoryServerManager
+{
+public:
+	static CHistoryServer*			New						( void );
+	static CHistoryServer*			New						( CServers* pServer );
+
+	static CHistoryServer*			Find					( size_t uiID )
+	{
+		if ( uiID < MAX_SERVERS ) return m_Servers[ uiID ];
+
+		return 0;
+	}
+
+	static CHistoryServer*			Find					( const char* szIP, unsigned short usPort );
+
+	static CHistoryServer*			FindIndex				( size_t uiIndex );
+	
+	static bool						Remove					( const CHistoryServer* p );
+
+	static void						RemoveAll				( void );
+
+	static size_t					Count					( void )					{ return m_uiCount; }
+
+	static size_t					FindFreeID				( void );
+
+private:
+	static size_t					m_uiCount;
+	static size_t					m_uiLastFreeID;
+
+	static CHistoryServer*			m_Servers[ MAX_SERVERS ];
+};
 #endif

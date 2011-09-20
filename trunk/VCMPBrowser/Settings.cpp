@@ -39,7 +39,7 @@ void CSettings::WriteSettings( void )
 	HKEY hKey;
 	char szDir[ MAX_PATH ] = { 0 };
 
-	if( RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\VCMP", NULL, KEY_WRITE, &hKey ) == ERROR_SUCCESS)
+	if( RegCreateKeyEx(HKEY_CURRENT_USER, "Software\\VCMP", NULL, 0, 0, KEY_WRITE, 0, &hKey, 0 ) == ERROR_SUCCESS)
 	{
 
 		if ( *m_szGTAVCPath )
