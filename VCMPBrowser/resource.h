@@ -16,6 +16,8 @@
 #define IDI_UNLOCKED                    117
 #define IDR_RCLICKMENU                  121
 #define IDD_DLG_ABOUT                   124
+#define IDD_GRABBINGLIST                126
+#define IDD_DLG_GRABBINGLIST            126
 #define ID_BTN_OK                       1007
 #define ID_BTN_CANCEL                   1008
 #define IDC_EDIT_NAME                   1010
@@ -56,7 +58,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        126
+#define _APS_NEXT_RESOURCE_VALUE        127
 #define _APS_NEXT_COMMAND_VALUE         40023
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101

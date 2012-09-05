@@ -13,11 +13,13 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (United Kingdom) resources
+// English (U.K.) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
+#ifdef _WIN32
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
 #pragma code_page(1252)
+#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -50,7 +52,7 @@ END
 // Menu
 //
 
-IDR_MENU1 MENU
+IDR_MENU1 MENU 
 BEGIN
     POPUP "&File"
     BEGIN
@@ -78,7 +80,7 @@ BEGIN
     END
 END
 
-IDR_RCLICKMENU MENU
+IDR_RCLICKMENU MENU 
 BEGIN
     POPUP "FavsMenu"
     BEGIN
@@ -114,7 +116,7 @@ IDI_UNLOCKED            ICON                    "Images\\Unlocked.ico"
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO
+GUIDELINES DESIGNINFO 
 BEGIN
     IDD_DLG_SETTINGS, DIALOG
     BEGIN
@@ -146,6 +148,14 @@ BEGIN
         RIGHTMARGIN, 213
         TOPMARGIN, 7
         BOTTOMMARGIN, 92
+    END
+
+    IDD_DLG_GRABBINGLIST, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 177
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -209,7 +219,14 @@ BEGIN
     LTEXT           "Website: http://vcmp.liberty-unleashed.co.uk",IDC_STATIC,42,66,148,8
 END
 
-#endif    // English (United Kingdom) resources
+IDD_DLG_GRABBINGLIST DIALOGEX 0, 0, 184, 62
+STYLE DS_SETFONT | WS_CHILD | WS_BORDER
+FONT 8, "Microsoft Sans Serif", 400, 0, 0x0
+BEGIN
+    CTEXT           "\n\nRetrieving server list. Please wait...",IDC_STATIC,7,7,170,48
+END
+
+#endif    // English (U.K.) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
