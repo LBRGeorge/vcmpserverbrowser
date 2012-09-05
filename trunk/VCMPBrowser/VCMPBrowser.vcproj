@@ -518,10 +518,6 @@
 		<Filter
 			Name="Defines"
 			>
-			<File
-				RelativePath="..\..\Defines\BuildDefs.h"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="vcmpquery"

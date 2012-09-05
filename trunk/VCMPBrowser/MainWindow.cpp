@@ -365,7 +365,7 @@ INT_PTR CALLBACK AddServerDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM
 
 					
 
-					if ( !usPort ) usPort = 2301;
+					if ( !usPort ) usPort = 5192;
 
 					struct hostent     *he;
 					if ( ( he = gethostbyname( szIP ) ) == NULL ) 
@@ -1118,7 +1118,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 							// We should only listen for lan stuff when we have this tab open
 							CLANServerQuery::Start();
 
-							CLANServerQuery::Broadcast( 2301 );
+							CLANServerQuery::Broadcast( 5192 );
 						}
 						break;
 #endif
@@ -1647,7 +1647,7 @@ bool CMainWindow::Create( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lp
 	}
 
 	icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-	icex.dwICC = ICC_TAB_CLASSES | ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_COOL_CLASSES | ICC_WIN95_CLASSES | ICC_USEREX_CLASSES;
+	icex.dwICC = ICC_TAB_CLASSES | ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_WIN95_CLASSES;
 	if ( !InitCommonControlsEx(&icex) )
 	{
 #ifdef _DEBUG

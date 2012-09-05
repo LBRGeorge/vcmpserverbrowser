@@ -18,7 +18,11 @@ void SplitIPAndPort( const char* sz, char szIP[], unsigned short& usPort, size_t
 		*szPort++;
 		if ( is_numA( szPort ) ) usPort = atoi( szPort );
 
-		str_cpyA( szIP, szIPAndPort, ( szPort - szIPAndPort ) );
+		size_t uiLen = ( szPort - szIPAndPort );
+		if ( uiLen > uiIPBufSize )
+			uiLen = uiIPBufSize;
+
+		str_cpyA( szIP, szIPAndPort, uiLen );
 	}
 	else
 	{
@@ -247,7 +251,7 @@ clock_t CServerQuery::Query( const char* szIP, unsigned short usPort )
 	struct hostent     *he;
 	if ( ( he = gethostbyname( szIP ) ) == NULL ) 
 	{
-		MessageBox( 0, _TEXT("Unable to resolve IP of server"), _TEXT("Error"), MB_ICONEXCLAMATION | MB_OK );
+		//MessageBox( 0, _TEXT("Unable to resolve IP of server"), _TEXT("Error"), MB_ICONEXCLAMATION | MB_OK );
 		return 0;
 	}
 
@@ -283,7 +287,7 @@ clock_t CServerQuery::QueryWithPlayers( const char* szIP, unsigned short usPort 
 	struct hostent     *he;
 	if ( ( he = gethostbyname( szIP ) ) == NULL ) 
 	{
-		MessageBox( 0, _TEXT("Unable to resolve IP of server"), _TEXT("Error"), MB_ICONEXCLAMATION | MB_OK );
+		//MessageBox( 0, _TEXT("Unable to resolve IP of server"), _TEXT("Error"), MB_ICONEXCLAMATION | MB_OK );
 		return 0;
 	}
 
@@ -327,13 +331,22 @@ clock_t CServerQuery::QueryWithPlayers( const char* szIP, unsigned short usPort 
 
 void CServerQuery::UpdateInternetList( void )
 {
+	HWND hDialogWnd = CreateDialogParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DLG_GRABBINGLIST), CMainWindow::GetMain(), NULL, 0L);
+	ShowWindow( hDialogWnd, SW_SHOW );
+	UpdateWindow( hDialogWnd );
+
 	char* szList;
 	int uiDataLen = http_fetch( "vicecitymultiplayer.com/servers.php", &szList );
 
 	if ( uiDataLen == -1 )
 	{
-		MessageBox( 0, _TEXT( "Unable to contact master list" ), _TEXT( "Error" ), MB_ICONEXCLAMATION | MB_OK );
-		return;
+		// Try the backup list
+		uiDataLen = http_fetch( "liberty-unleashed.co.uk/vcmp/servers.txt", &szList );
+		if ( uiDataLen == -1 )
+		{
+			MessageBox( 0, _TEXT( "Unable to contact master list" ), _TEXT( "Error" ), MB_ICONEXCLAMATION | MB_OK );
+			return;
+		}
 	}
 
 	char* oldList = szList;
@@ -373,17 +386,27 @@ void CServerQuery::UpdateInternetList( void )
 	}
 
 	free( oldList );
+
+	DestroyWindow(hDialogWnd);
 }
 
 void CServerQuery::UpdateOfficialList( void )
 {
+	HWND hDialogWnd = CreateDialogParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DLG_GRABBINGLIST), CMainWindow::GetMain(), NULL, 0L);
+	ShowWindow( hDialogWnd, SW_SHOW );
+	UpdateWindow( hDialogWnd );
+
 	char* szList;
-	int uiDataLen = http_fetch( "vicecitymultiplayer.com//official.txt", &szList );
+	int uiDataLen = http_fetch( "vicecitymultiplayer.com/official.txt", &szList );
 
 	if ( uiDataLen == -1 )
 	{
-		MessageBox( 0, _TEXT( "Unable to contact master list" ), _TEXT( "Error" ), MB_ICONEXCLAMATION | MB_OK );
-		return;
+		uiDataLen = http_fetch( "liberty-unleashed.co.uk/vcmp/official.txt", &szList );
+		if ( uiDataLen == -1 )
+		{
+			MessageBox( 0, _TEXT( "Unable to contact master list" ), _TEXT( "Error" ), MB_ICONEXCLAMATION | MB_OK );
+			return;
+		}
 	}
 
 	char* oldList = szList;
@@ -421,4 +444,6 @@ void CServerQuery::UpdateOfficialList( void )
 	}
 
 	free( oldList );
+
+	DestroyWindow(hDialogWnd);
 }
